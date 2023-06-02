@@ -1,0 +1,83 @@
+<?php
+
+// Add CORS header to enable specific domain to send HTTP requests to these endpoints:
+  header("Access-Control-Allow-Origin: http://localhost:3000");
+  header("Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE, PUT");
+  header("Access-Control-Allow-Headers: DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization");
+  header("Access-Control-Expose-Headers: Content-Length,Content-Range");
+  header("Access-Control-Allow-Credentials: true");
+
+
+
+// Specify database credentials
+$host = "devkinsta_db"; 
+$user = "root"; 
+$password = "y9Q66z79CGQiZid3"; 
+$dbname = "contact_mang"; 
+
+$id = ''; // Initialize ID variable
+
+// Connect to the database
+$con = mysqli_connect($host, $user, $password, $dbname);
+
+// Check connection
+if (!$con) {
+  die("Connection failed: " . mysqli_connect_error());
+}
+
+// Get HTTP method of request
+$method = $_SERVER['REQUEST_METHOD'];
+
+// Switch based on HTTP method
+switch ($method) {
+  case 'GET':
+    $sql = "SELECT * FROM contacts"; // Select all rows from 'contacts' table
+    break;
+  case 'POST':
+    // Get data from POST request body
+    $name = $_POST["name"];
+    $email = $_POST["email"];
+    $country = $_POST["country"];
+    $city = $_POST["city"];
+    $job = $_POST["job"];
+    $id = $_POST["id"];
+    $editingId = $_POST["editingId"];
+    
+    // Insert data into 'contacts' table
+    if(isset($id) && $editingId === null) {
+      $sql = "DELETE FROM contacts WHERE id=$id";
+      
+    } else if ($editingId !== null){
+    $sql = "UPDATE contacts 
+    SET  name = '$name',  email = '$email',  city = '$city', country = '$country', job = '$job'
+    WHERE id = $editingId;"; 
+    }
+    else {
+      $sql = "INSERT INTO contacts (name, email, city, country, job) VALUES ('$name', '$email', '$city', '$country', '$job')"; 
+      }
+    break;
+}
+
+// Run SQL statement
+$result = mysqli_query($con, $sql);
+
+// Check if SQL statement failed
+if (!$result) {
+  http_response_code(404); // Set HTTP status code to 404
+  die(mysqli_error($con)); // Output error message
+}
+
+// Output results based on HTTP method
+if ($method == 'GET') {
+  if (!$id) echo '['; // Start output as JSON-encoded array
+  for ($i = 0; $i < mysqli_num_rows($result); $i++) {
+    echo ($i > 0 ? ',' : '') . json_encode(mysqli_fetch_object($result)); // Output each row as JSON-encoded object
+  }
+  if (!$id) echo ']'; // End output as JSON-encoded array
+} elseif ($method == 'POST') {
+  echo json_encode($result); // Output result of insert as JSON-encoded string
+} else {
+  echo mysqli_affected_rows($con); // Output number of rows affected by SQL statement
+}
+
+$con->close(); // Close database connection
